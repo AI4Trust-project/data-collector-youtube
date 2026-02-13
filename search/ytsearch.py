@@ -124,12 +124,12 @@ def get_keywords(context, conn, kid):
         cur = conn.cursor()
         query = (
             "SELECT keyword, relevance_language, region_code,"
-            " max_results, safe_search, keyword_id FROM youtube.search_keywords"
+            " max_results, safe_search, keyword_id, topic FROM youtube.search_keywords"
         )
         if kid and kid > 0:
             query = (
                 "SELECT keyword, relevance_language, region_code,"
-                " max_results, safe_search, keyword_id FROM youtube.search_keywords"
+                " max_results, safe_search, keyword_id, topic FROM youtube.search_keywords"
                 " WHERE keyword_id='" + str(kid) + "'"
             )
 
@@ -169,6 +169,7 @@ def handler(context, event):
         maxResults,
         safeSearch,
         keywordId,
+        topic
     ) in keywords:
         query_uuid = str(uuid.uuid4())
         context.logger.info("Search for " + keyword + "id " + query_uuid)
@@ -179,6 +180,7 @@ def handler(context, event):
             "created_at": date,
             "keyword": keyword,
             "keyword_id": keywordId,
+            "topic": topic,
             "max_results": maxResults,
             "order": "viewCount",
             "safe_search": safeSearch,
@@ -234,6 +236,7 @@ def handler(context, event):
                             "created_at": search_info["created_at"],
                             "keyword": search_info["keyword"],
                             "keyword_id": search_info["keyword_id"],
+                            "topic": search_info["topic"],
                             "search_id": search_info["id"],
                             "relevance_language": search_info["relevance_language"],
                             "region_code": search_info["region_code"],

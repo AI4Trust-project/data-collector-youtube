@@ -4,10 +4,35 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from stringcase import snakecase
+import isodate
 
 from googleapiclient.discovery import build
 
 from kafka import KafkaProducer
+
+SKIP_FIELDS = {
+    "contentDetails": ["region_restriction", "content_rating"],
+}
+
+GENERATE_FIELDS = {
+    "contentDetails": (
+        lambda row: {
+            "duration_s": isodate.parse_duration(row["duration"]).total_seconds()
+        }
+    ),
+    "statistics": (
+        lambda row: {
+            "comment_count_num": (
+                None if row["comment_count"] is None else int(row["comment_count"])
+            ),
+            "favorite_count_num": (
+                None if row["favorite_count"] is None else int(row["favorite_count"])
+            ),
+            "like_count_num": None if row["like_count"] is None else int(row["like_count"]),
+            "view_count_num": None if row["view_count"] is None else int(row["view_count"]),
+        }
+    ),
+}
 
 
 def init_context(context):
@@ -109,6 +134,15 @@ def handler(context, event):
             # to table
             try:
                 row = {snakecase(k): v for k, v in items[part].items()} | baserow.copy()
+
+                # generate fields
+                if part in GENERATE_FIELDS:
+                    row.update(GENERATE_FIELDS[part](row))
+
+                # remove fields
+                if part in SKIP_FIELDS:
+                    for field in SKIP_FIELDS[part]:
+                        row.pop(field, None)
 
                 m = json.loads(json.dumps(row))
                 k = m["search_id"] + "|" + m["id"]
